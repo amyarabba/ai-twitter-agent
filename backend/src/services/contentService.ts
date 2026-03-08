@@ -23,23 +23,27 @@ const client = env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: env.OPENAI_API_KEY })
   : null;
 
-function cleanPost(text: string): string {
-  return text
+function cleanPost(text: string, limit = 280): string {
+  const cleaned = text
     .replace(/#[A-Za-z0-9_]+/g, '')
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
-}
 
+  if (cleaned.length > limit) {
+    return cleaned.slice(0, limit - 1).trim();
+  }
+
+  return cleaned;
+}
 function sanitizeResponse(content: GeneratePostResponse): GeneratePostResponse {
   return {
-    tweet: cleanPost(content.tweet),
-    thread: content.thread.slice(0, 6).map((tweet) => cleanPost(tweet)),
-    replies: content.replies.slice(0, 3).map((reply) => cleanPost(reply)),
+    tweet: cleanPost(content.tweet, 280),
+    thread: content.thread.slice(0, 6).map((tweet) => cleanPost(tweet, 280)),
+    replies: content.replies.slice(0, 3).map((reply) => cleanPost(reply, 220)),
   };
 }
-
 function makePrompt(input: GenerateTopicInput): string {
   return [
     'Generate high-quality posts for the X account @AIFutureBrief that cover AI breakthroughs, tools, research, and AI industry developments.',
