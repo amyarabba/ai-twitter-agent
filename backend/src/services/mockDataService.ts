@@ -1,4 +1,5 @@
 import type {
+  AnalyticsInsightsResponse,
   DashboardMetrics,
   GeneratePostResponse,
   GenerateTopicInput,
@@ -85,6 +86,23 @@ function trimTopic(topic: string): string {
   return topic.trim().replace(/\s+/g, ' ').slice(0, 70);
 }
 
+function pickHookLead(style: string, topic: string): string {
+  switch (style) {
+    case 'Contrarian':
+      return `${topic} is being framed like a feature upgrade. It looks more like a category reset.`;
+    case 'Question-led':
+      return `What happens when ${topic} stops being a feature and starts owning the workflow?`;
+    case 'Prediction':
+      return `Prediction: ${topic} will matter faster than most teams are planning for.`;
+    case 'Data-led':
+      return `${topic} is becoming one of the clearest signals that AI distribution is shifting.`;
+    case 'Explainer':
+      return `The real story in ${topic} is not the headline. It is the workflow change underneath it.`;
+    default:
+      return `${topic} is getting underestimated.`;
+  }
+}
+
 export function getTrendSignals(): TrendTopic[] {
   return trendSignals;
 }
@@ -119,8 +137,8 @@ export function buildMockGeneration(input: GenerateTopicInput): GeneratePostResp
   return {
     tweet:
       `${topic} is getting underestimated.\n\n` +
-      'The real shift is not the headline. It is how much faster this makes small AI teams think, test, and ship.\n\n' +
-      'When that happens, entire categories can move before incumbents realize the product surface has changed.',
+      'The real shift is not the headline. It is how much faster teams can test, ship, and own the workflow.\n\n' +
+      'That is how entire software categories get reset.',
     thread: [
       `Most people are looking at ${topic} as a feature story. It is actually a leverage story.`,
       `${topic} matters because it compresses the time between idea and usable output for teams building on AI.`,
@@ -133,6 +151,36 @@ export function buildMockGeneration(input: GenerateTopicInput): GeneratePostResp
       `Strong take. The overlooked part is how ${topic} changes distribution, not just raw capability. Faster workflows usually create the next breakout products.`,
       `${topic} feels important because it lowers the cost of experimentation. That is usually where category leaders start separating.`,
       `The market tends to focus on demos first. The better question is whether ${topic} changes how quickly teams can ship something users actually keep using.`,
+    ],
+  };
+}
+
+export function buildOptimizedMockGeneration(
+  input: GenerateTopicInput,
+  insights: AnalyticsInsightsResponse,
+): GeneratePostResponse {
+  const topic = trimTopic(input.topic);
+  const topHookStyle = insights.bestPerformingHookStyles[0]?.style ?? 'Contrarian';
+  const topTopic = insights.bestPerformingTopics[0]?.topic ?? 'AI agents';
+  const hookLead = pickHookLead(topHookStyle, topic);
+
+  return {
+    tweet:
+      `${hookLead}\n\n` +
+      `Posts on this theme win when they connect ${topic} to workflow change instead of generic hype.\n\n` +
+      'That is why this angle keeps earning attention.',
+    thread: [
+      hookLead,
+      `${topic} is performing best when it is framed as a workflow shift, not just a model update.`,
+      `The audience keeps rewarding posts that connect ${topic} to real product leverage and business consequences.`,
+      `That pattern is similar to what already works in ${topTopic}, where a sharp opinion plus a clear implication beats generic summaries.`,
+      'Shorter, high-clarity tweets are still doing the heavy lifting, so each post in the thread needs to land on its own.',
+      `If you want more engagement from ${topic}, lead with the strongest hook first and move quickly into what changes for builders or founders.`,
+    ],
+    replies: [
+      `The more interesting question is whether ${topic} changes the workflow, not just the benchmark. That is usually where the real upside starts.`,
+      `This is strongest when you connect ${topic} to product leverage. People engage more when the implication is obvious.`,
+      `Feels like the market is underpricing how quickly ${topic} could shift who owns the user workflow.`,
     ],
   };
 }

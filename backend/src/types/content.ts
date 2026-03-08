@@ -220,3 +220,43 @@ export interface TopPostsResponse {
   generatedAt: string;
   items: AnalyticsPost[];
 }
+
+export interface ContentInsight {
+  topic: string;
+  avgEngagement: number;
+  bestHookStyle: string;
+  bestPostTime: string;
+  lastUpdated: string;
+}
+
+export interface HookStyleInsight {
+  style: string;
+  avgEngagementRate: number;
+  postCount: number;
+}
+
+export interface PostingTimeInsight {
+  label: string;
+  avgEngagementRate: number;
+  avgImpressions: number;
+  postCount: number;
+}
+
+export interface EngagementTrendPoint {
+  label: string;
+  date: string;
+  avgEngagementRate: number;
+  impressions: number;
+  posts: number;
+}
+
+export interface AnalyticsInsightsResponse {
+  generatedAt: string;
+  bestPostingTime: string;
+  bestPerformingTopics: ContentInsight[];
+  bestPerformingHookStyles: HookStyleInsight[];
+  bestPostingTimes: PostingTimeInsight[];
+  averageEngagementRate: number;
+  recommendedContentStrategy: string[];
+  engagementTrends: EngagementTrendPoint[];
+}

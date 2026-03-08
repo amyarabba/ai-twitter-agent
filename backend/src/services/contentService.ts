@@ -2,8 +2,16 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 
 import { env } from '../config/env.js';
-import { buildMockGeneration } from './mockDataService.js';
-import type { GeneratePostResponse, GenerateTopicInput } from '../types/content.js';
+import { getAnalyticsInsights } from './analyticsInsightsService.js';
+import {
+  buildMockGeneration,
+  buildOptimizedMockGeneration,
+} from './mockDataService.js';
+import type {
+  AnalyticsInsightsResponse,
+  GeneratePostResponse,
+  GenerateTopicInput,
+} from '../types/content.js';
 
 const outputSchema = z.object({
   tweet: z.string().trim().min(40).max(280),
@@ -49,37 +57,114 @@ function makePrompt(input: GenerateTopicInput): string {
   ].join('\n');
 }
 
+function buildInsightsPrompt(insights: AnalyticsInsightsResponse): string {
+  const topicLines = insights.bestPerformingTopics
+    .slice(0, 3)
+    .map(
+      (item, index) =>
+        `${index + 1}. ${item.topic} | avg engagement ${item.avgEngagement}% | best hook ${item.bestHookStyle} | best time ${item.bestPostTime}`,
+    )
+    .join('\n');
+  const hookLines = insights.bestPerformingHookStyles
+    .slice(0, 3)
+    .map(
+      (item, index) =>
+        `${index + 1}. ${item.style} | avg engagement ${item.avgEngagementRate}% | posts ${item.postCount}`,
+    )
+    .join('\n');
+  const strategyLines = insights.recommendedContentStrategy
+    .slice(0, 4)
+    .map((item, index) => `${index + 1}. ${item}`)
+    .join('\n');
+
+  return [
+    'Optimization context from previous post analytics:',
+    `- Best posting time: ${insights.bestPostingTime}`,
+    `- Average engagement rate: ${insights.averageEngagementRate}%`,
+    '- Best performing topics:',
+    topicLines || '1. AI agents | avg engagement 7% | best hook Contrarian | best time Morning',
+    '- Best performing hook styles:',
+    hookLines || '1. Contrarian | avg engagement 7% | posts 5',
+    '- Recommended strategy:',
+    strategyLines || '1. Lead with a stronger opinion and a faster payoff.',
+    'Use this context to make the hook sharper, the takeaway clearer, and the thread more likely to earn replies and reposts.',
+  ].join('\n');
+}
+
+function makeOptimizedPrompt(
+  input: GenerateTopicInput,
+  insights: AnalyticsInsightsResponse,
+): string {
+  return [
+    'Generate optimized X content for the account @AIFutureBrief using analytics from its previous posts.',
+    'Tone requirements: insightful, slightly provocative, concise, clear for a tech audience.',
+    'Return JSON only using this exact shape:',
+    '{"tweet":"string","thread":["tweet1","tweet2","tweet3","tweet4","tweet5","tweet6"],"replies":["reply1","reply2","reply3"]}',
+    'Rules:',
+    '- The single tweet should feel post-worthy on its own and stay under 280 characters.',
+    '- The thread must contain exactly 6 tweets.',
+    '- The first thread tweet must be a strong hook.',
+    '- Make every thread tweet easy to read.',
+    '- No hashtags anywhere in the output.',
+    '- Favor hook patterns and framing styles that are most consistent with the analytics context below.',
+    '- Do not mention analytics, engagement rates, or posting times inside the generated content.',
+    '- The three replies should sound natural on large AI posts.',
+    buildInsightsPrompt(insights),
+    `Topic: ${input.topic}`,
+  ].join('\n');
+}
+
+async function requestGeneratedContent(prompt: string): Promise<GeneratePostResponse> {
+  const response = await client!.responses.create({
+    model: env.OPENAI_MODEL,
+    input: prompt,
+    text: {
+      format: {
+        type: 'json_object',
+      },
+    },
+  });
+
+  const rawOutput = response.output_text?.trim();
+
+  if (!rawOutput) {
+    throw new Error('The OpenAI API returned an empty response.');
+  }
+
+  return outputSchema.parse(
+    sanitizeResponse(JSON.parse(rawOutput) as GeneratePostResponse),
+  );
+}
+
 export async function generateContent(
   input: GenerateTopicInput,
 ): Promise<GeneratePostResponse> {
   if (!client) {
-    return buildMockGeneration(input);
+    return outputSchema.parse(sanitizeResponse(buildMockGeneration(input)));
   }
 
   try {
-    const response = await client.responses.create({
-      model: env.OPENAI_MODEL,
-      input: makePrompt(input),
-      text: {
-        format: {
-          type: 'json_object',
-        },
-      },
-    });
-
-    const rawOutput = response.output_text?.trim();
-
-    if (!rawOutput) {
-      throw new Error('The OpenAI API returned an empty response.');
-    }
-
-    const parsedPayload = outputSchema.parse(
-      sanitizeResponse(JSON.parse(rawOutput) as GeneratePostResponse),
-    );
-
-    return parsedPayload;
+    return await requestGeneratedContent(makePrompt(input));
   } catch (error) {
     console.error('OpenAI generation failed, falling back to local content.', error);
-    return buildMockGeneration(input);
+    return outputSchema.parse(sanitizeResponse(buildMockGeneration(input)));
   }
 }
+
+export async function generateOptimizedContent(
+  input: GenerateTopicInput,
+): Promise<GeneratePostResponse> {
+  const insights = getAnalyticsInsights();
+
+  if (!client) {
+    return outputSchema.parse(sanitizeResponse(buildOptimizedMockGeneration(input, insights)));
+  }
+
+  try {
+    return await requestGeneratedContent(makeOptimizedPrompt(input, insights));
+  } catch (error) {
+    console.error('Optimized OpenAI generation failed, falling back to local content.', error);
+    return outputSchema.parse(sanitizeResponse(buildOptimizedMockGeneration(input, insights)));
+  }
+}
+

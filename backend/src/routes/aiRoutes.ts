@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
+import { generateOptimizedContent } from '../services/contentService.js';
 import {
   generateViralHooks,
   getAiTopics,
@@ -33,6 +34,15 @@ aiRouter.post('/ai/hooks', async (request, response, next) => {
 aiRouter.get('/ai/competitors', async (_request, response, next) => {
   try {
     response.json(await getCompetitorRadar());
+  } catch (error) {
+    next(error);
+  }
+});
+
+aiRouter.post('/ai/optimized-content', async (request, response, next) => {
+  try {
+    const payload = requestSchema.parse(request.body);
+    response.json(await generateOptimizedContent(payload));
   } catch (error) {
     next(error);
   }

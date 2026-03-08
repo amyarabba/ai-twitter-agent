@@ -1,5 +1,6 @@
 import type {
   AiTopicsResponse,
+  AnalyticsInsightsResponse,
   AnalyticsPostsResponse,
   CompetitorRadarResponse,
   DashboardMetrics,
@@ -57,6 +58,14 @@ export const api = {
   },
   generateHooks(payload: ViralHooksPayload): Promise<ViralHooksResponse> {
     return request<ViralHooksResponse>('/ai/hooks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  generateOptimizedContent(
+    payload: GenerateContentPayload,
+  ): Promise<GenerateContentResponse> {
+    return request<GenerateContentResponse>('/ai/optimized-content', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -167,6 +176,9 @@ export const api = {
   },
   getTopPosts(): Promise<TopPostsResponse> {
     return request<TopPostsResponse>('/analytics/top');
+  },
+  getAnalyticsInsights(): Promise<AnalyticsInsightsResponse> {
+    return request<AnalyticsInsightsResponse>('/analytics/insights');
   },
   generateContent(
     payload: GenerateContentPayload,

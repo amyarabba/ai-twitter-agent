@@ -58,6 +58,21 @@ function createReplyDraftsTable(db: DatabaseSync, tableName = 'reply_drafts'): v
   `);
 }
 
+function createContentInsightsTable(
+  db: DatabaseSync,
+  tableName = 'content_insights',
+): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+      topic TEXT PRIMARY KEY,
+      avg_engagement REAL NOT NULL DEFAULT 0,
+      best_hook_style TEXT NOT NULL DEFAULT 'Insight-led',
+      best_post_time TEXT NOT NULL DEFAULT 'Morning',
+      last_updated TEXT NOT NULL
+    );
+  `);
+}
+
 function ensureReplyDraftSchema(db: DatabaseSync): void {
   createReplyDraftsTable(db);
 
@@ -143,10 +158,15 @@ function createSchema(db: DatabaseSync): void {
   `);
 
   createReplyDraftsTable(db);
+  createContentInsightsTable(db);
   ensureColumn(db, 'posts', 'x_post_id', 'TEXT');
   ensureColumn(db, 'engagement_logs', 'retweets', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'engagement_logs', 'reposts', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'engagement_logs', 'engagement_rate', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn(db, 'content_insights', 'avg_engagement', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn(db, 'content_insights', 'best_hook_style', "TEXT NOT NULL DEFAULT 'Insight-led'");
+  ensureColumn(db, 'content_insights', 'best_post_time', "TEXT NOT NULL DEFAULT 'Morning'");
+  ensureColumn(db, 'content_insights', 'last_updated', 'TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP');
   ensureReplyDraftSchema(db);
 }
 
@@ -175,4 +195,3 @@ export function getDatabasePath(): string {
 
   return resolvedDatabasePath;
 }
-

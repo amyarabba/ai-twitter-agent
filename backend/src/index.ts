@@ -11,6 +11,7 @@ import { dashboardRouter } from './routes/dashboardRoutes.js';
 import { generatorRouter } from './routes/generatorRoutes.js';
 import { postsRouter } from './routes/postsRoutes.js';
 import { startReplyHunterWorker } from './services/growthWorkerService.js';
+import { startInsightsWorker } from './services/insightsWorkerService.js';
 import { startReplyPublisher } from './services/replyPublisherService.js';
 import { startSchedulerService } from './services/schedulerService.js';
 
@@ -18,6 +19,7 @@ initializeDatabase();
 startSchedulerService();
 startReplyHunterWorker();
 startReplyPublisher();
+startInsightsWorker();
 
 const app = express();
 

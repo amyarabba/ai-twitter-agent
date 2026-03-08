@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState, useTransition, type FormEvent } from 'react';
+﻿import { useDeferredValue, useEffect, useState, useTransition, type FormEvent } from 'react';
 import {
   Activity,
   ArrowUpRight,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { InsightsDashboard } from './components/insights/InsightsDashboard';
 import { GeneratedContentCard } from './components/GeneratedContentCard';
 import { GrowthChart } from './components/GrowthChart';
 import { GrowthLab } from './components/growth/GrowthLab';
@@ -29,6 +30,7 @@ import { QueueManager } from './components/queue/QueueManager';
 import { api } from './services/api';
 import type {
   AiTopicsResponse,
+  AnalyticsInsightsResponse,
   AnalyticsPostsResponse,
   CompetitorRadarResponse,
   DashboardMetrics,
@@ -79,7 +81,7 @@ function previewContent(content: QueueContent | null | undefined): string {
 
 function App() {
   const [activeView, setActiveView] = useState<
-    'command-center' | 'queue-manager' | 'growth-lab' | 'analytics' | 'reply-hunter'
+    'command-center' | 'queue-manager' | 'growth-lab' | 'analytics' | 'insights' | 'reply-hunter'
   >('command-center');
   const [dashboard, setDashboard] = useState<DashboardMetrics | null>(null);
   const [trendResponse, setTrendResponse] = useState<TrendResponse | null>(null);
@@ -89,6 +91,8 @@ function App() {
     useState<CompetitorRadarResponse | null>(null);
   const [analyticsResponse, setAnalyticsResponse] =
     useState<AnalyticsPostsResponse | null>(null);
+  const [analyticsInsightsResponse, setAnalyticsInsightsResponse] =
+    useState<AnalyticsInsightsResponse | null>(null);
   const [topPostsResponse, setTopPostsResponse] =
     useState<TopPostsResponse | null>(null);
   const [growthTargetsResponse, setGrowthTargetsResponse] =
@@ -218,8 +222,9 @@ function App() {
       setAnalyticsError(null);
 
       try {
-        const [analyticsData, topData] = await Promise.all([
+        const [analyticsData, insightsData, topData] = await Promise.all([
           api.getPostAnalytics(),
+          api.getAnalyticsInsights(),
           api.getTopPosts(),
         ]);
 
@@ -228,6 +233,7 @@ function App() {
         }
 
         setAnalyticsResponse(analyticsData);
+        setAnalyticsInsightsResponse(insightsData);
         setTopPostsResponse(topData);
       } catch (error) {
         if (!isActive) {
@@ -365,7 +371,7 @@ function App() {
 
     startTransition(() => {
       void api
-        .generateContent({ topic: trimmedTopic })
+        .generateOptimizedContent({ topic: trimmedTopic })
         .then((content) => {
           setGeneratedContent(content);
         })
@@ -650,6 +656,20 @@ function App() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveView('insights');
+                }}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${
+                  activeView === 'insights'
+                    ? 'bg-cyan-300 text-slate-950'
+                    : 'border border-white/10 bg-white/4 text-slate-100 hover:border-cyan-300/30 hover:bg-cyan-500/8'
+                }`}
+              >
+                <Activity className="h-4 w-4" />
+                Insights
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setActiveView('analytics');
                 }}
                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${
@@ -763,6 +783,18 @@ function App() {
               handleReplyDraftAction(id, 'rejected');
             }}
           />
+        ) : activeView === 'insights' ? (
+          <InsightsDashboard
+            insightsResponse={analyticsInsightsResponse}
+            isLoading={isLoadingAnalytics}
+            error={analyticsError}
+            onRefresh={() => {
+              setReloadCount((current) => current + 1);
+            }}
+            onOpenGenerator={() => {
+              setActiveView('command-center');
+            }}
+          />
         ) : activeView === 'analytics' ? (
           <AnalyticsDashboard
             analyticsResponse={analyticsResponse}
@@ -802,6 +834,7 @@ function App() {
                       'Growth Lab',
                       'Reply Hunter',
                       'Analytics',
+                      'Insights',
                       'Trend Scanner',
                       'Tweet Generator',
                       'Queue Manager',
@@ -934,13 +967,13 @@ function App() {
 
               <SectionCard
                 eyebrow="AI Tweet Generator"
-                title="Generate and queue a tweet pack from one topic"
-                description="Click Generate Tweet to call the backend, then save the tweet or thread as a draft or schedule it directly into the queue."
+                title="Generate and queue an optimized tweet pack"
+                description="Click Generate Optimized Tweet to call the analytics-informed backend, then save the tweet or thread as a draft or schedule it directly into the queue."
               >
                 <div className="space-y-6">
                   <div className="rounded-[1.6rem] border border-white/8 bg-white/4 p-5">
                     <p className="text-sm leading-6 text-slate-300">
-                      This generator returns one main tweet, a six-post thread, and three replies so you can move from idea to production-ready content in one pass.
+                      This generator now uses the analytics optimization layer, returning one main tweet, a six-post thread, and three replies tuned around winning topic, hook, and timing patterns.
                     </p>
                   </div>
 
@@ -983,7 +1016,7 @@ function App() {
                       className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
                     >
                       <Bot className="h-4 w-4" />
-                      {isPending ? 'Generating...' : 'Generate Tweet'}
+                      {isPending ? 'Generating...' : 'Generate Optimized Tweet'}
                     </button>
                   </form>
 
