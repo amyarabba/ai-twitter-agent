@@ -11,25 +11,29 @@ import {
 } from '../services/replyHunterService.js';
 import { runReplyHunterCycle } from '../services/growthWorkerService.js';
 
-const replyRequestSchema = z.object({
-  tweetText: z.string().trim().min(12).optional(),
-  tweet_text: z.string().trim().min(12).optional(),
-  author: z.string().trim().min(1),
-}).superRefine((value, context) => {
-  if (!value.tweetText && !value.tweet_text) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['tweet_text'],
-      message: 'tweet_text is required.',
-    });
-  }
-});
+const replyRequestSchema = z
+  .object({
+    tweetText: z.string().trim().min(12).optional(),
+    tweet_text: z.string().trim().min(12).optional(),
+    author: z.string().trim().min(1),
+  })
+  .superRefine((value, context) => {
+    if (!value.tweetText && !value.tweet_text) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tweet_text'],
+        message: 'tweet_text is required.',
+      });
+    }
+  });
 
 const draftStatusSchema = z.object({
   status: z.enum(['approved', 'rejected']),
 });
 
-function serializeTarget(target: Awaited<ReturnType<typeof getGrowthTargets>>['items'][number]) {
+function serializeTarget(
+  target: Awaited<ReturnType<typeof getGrowthTargets>>['items'][number],
+) {
   return {
     tweet_id: target.tweetId,
     author: target.author,
@@ -41,7 +45,9 @@ function serializeTarget(target: Awaited<ReturnType<typeof getGrowthTargets>>['i
   };
 }
 
-function serializeReplyDraft(draft: Awaited<ReturnType<typeof getReplyDrafts>>[number]) {
+function serializeReplyDraft(
+  draft: Awaited<ReturnType<typeof getReplyDrafts>>[number],
+) {
   return {
     id: draft.id,
     tweet_id: draft.tweetId,
@@ -49,6 +55,8 @@ function serializeReplyDraft(draft: Awaited<ReturnType<typeof getReplyDrafts>>[n
     reply_text: draft.replyText,
     created_at: draft.createdAt,
     status: draft.status,
+    reply_post_id: draft.replyPostId,
+    posted_at: draft.postedAt,
   };
 }
 

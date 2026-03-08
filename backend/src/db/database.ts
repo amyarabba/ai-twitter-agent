@@ -7,20 +7,109 @@ import { env } from '../config/env.js';
 let database: DatabaseSync | null = null;
 let resolvedDatabasePath = '';
 
+interface TableInfoRow {
+  name: string;
+}
+
+function getTableColumns(db: DatabaseSync, tableName: string): string[] {
+  return (db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as unknown as TableInfoRow[]).map((column) => column.name);
+}
+
+function getTableSql(db: DatabaseSync, tableName: string): string {
+  const row = db
+    .prepare(
+      `SELECT sql
+       FROM sqlite_master
+       WHERE type = 'table' AND name = ?
+       LIMIT 1`,
+    )
+    .get(tableName) as { sql?: string } | undefined;
+
+  return row?.sql ?? '';
+}
+
 function ensureColumn(
   db: DatabaseSync,
   tableName: string,
   columnName: string,
   definition: string,
 ): void {
-  const columns = db
-    .prepare(`PRAGMA table_info(${tableName})`)
-    .all() as Array<{ name: string }>;
+  const columns = getTableColumns(db, tableName);
 
-  const hasColumn = columns.some((column) => column.name === columnName);
-
-  if (!hasColumn) {
+  if (!columns.includes(columnName)) {
     db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
+function createReplyDraftsTable(db: DatabaseSync, tableName = 'reply_drafts'): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tweet_id TEXT NOT NULL UNIQUE,
+      tweet_text TEXT NOT NULL,
+      reply_text TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('draft', 'approved', 'rejected', 'posted')),
+      reply_post_id TEXT,
+      posted_at TEXT
+    );
+  `);
+}
+
+function ensureReplyDraftSchema(db: DatabaseSync): void {
+  createReplyDraftsTable(db);
+
+  const columns = getTableColumns(db, 'reply_drafts');
+  const tableSql = getTableSql(db, 'reply_drafts').toLowerCase();
+  const hasPostedStatus = tableSql.includes("'posted'");
+  const hasReplyPostId = columns.includes('reply_post_id');
+  const hasPostedAt = columns.includes('posted_at');
+
+  if (hasPostedStatus && hasReplyPostId && hasPostedAt) {
+    return;
+  }
+
+  const replyPostIdSelect = hasReplyPostId ? 'reply_post_id' : 'NULL';
+  const postedAtSelect = hasPostedAt ? 'posted_at' : 'NULL';
+
+  try {
+    db.exec('BEGIN');
+    db.exec('DROP TABLE IF EXISTS reply_drafts_migrated');
+    createReplyDraftsTable(db, 'reply_drafts_migrated');
+    db.exec(`
+      INSERT INTO reply_drafts_migrated (
+        id,
+        tweet_id,
+        tweet_text,
+        reply_text,
+        created_at,
+        status,
+        reply_post_id,
+        posted_at
+      )
+      SELECT
+        id,
+        tweet_id,
+        tweet_text,
+        reply_text,
+        created_at,
+        CASE
+          WHEN status IN ('draft', 'approved', 'rejected', 'posted') THEN status
+          ELSE 'draft'
+        END,
+        ${replyPostIdSelect},
+        ${postedAtSelect}
+      FROM reply_drafts;
+
+      DROP TABLE reply_drafts;
+      ALTER TABLE reply_drafts_migrated RENAME TO reply_drafts;
+    `);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
   }
 }
 
@@ -51,21 +140,14 @@ function createSchema(db: DatabaseSync): void {
       timestamp TEXT NOT NULL,
       FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
     );
-
-    CREATE TABLE IF NOT EXISTS reply_drafts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tweet_id TEXT NOT NULL UNIQUE,
-      tweet_text TEXT NOT NULL,
-      reply_text TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('draft', 'approved', 'rejected'))
-    );
   `);
 
+  createReplyDraftsTable(db);
   ensureColumn(db, 'posts', 'x_post_id', 'TEXT');
   ensureColumn(db, 'engagement_logs', 'retweets', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'engagement_logs', 'reposts', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'engagement_logs', 'engagement_rate', 'REAL NOT NULL DEFAULT 0');
+  ensureReplyDraftSchema(db);
 }
 
 export function initializeDatabase(): DatabaseSync {
@@ -93,3 +175,4 @@ export function getDatabasePath(): string {
 
   return resolvedDatabasePath;
 }
+

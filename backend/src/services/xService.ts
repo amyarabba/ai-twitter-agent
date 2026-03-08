@@ -79,14 +79,20 @@ function buildHeaders(method: string, url: string): Record<string, string> {
 }
 
 async function createTweet(text: string, replyToId?: string): Promise<string> {
+  const normalizedText = text.trim();
+
+  if (!normalizedText) {
+    throw new Error('Cannot publish an empty X post.');
+  }
+
   const body = replyToId
     ? {
-        text,
+        text: normalizedText,
         reply: {
           in_reply_to_tweet_id: replyToId,
         },
       }
-    : { text };
+    : { text: normalizedText };
 
   const response = await fetch(CREATE_TWEET_URL, {
     method: 'POST',
@@ -150,4 +156,17 @@ export async function postThread(tweets: string[]): Promise<PublishPostResult> {
     rootTweetId,
     tweetIds,
   };
+}
+
+export async function postReply(
+  text: string,
+  replyToTweetId: string,
+): Promise<string> {
+  const normalizedReplyToId = replyToTweetId.trim();
+
+  if (!normalizedReplyToId) {
+    throw new Error('Reply target tweet id is required.');
+  }
+
+  return createTweet(text, normalizedReplyToId);
 }

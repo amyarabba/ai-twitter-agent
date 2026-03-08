@@ -11,11 +11,13 @@ import { dashboardRouter } from './routes/dashboardRoutes.js';
 import { generatorRouter } from './routes/generatorRoutes.js';
 import { postsRouter } from './routes/postsRoutes.js';
 import { startReplyHunterWorker } from './services/growthWorkerService.js';
+import { startReplyPublisher } from './services/replyPublisherService.js';
 import { startSchedulerService } from './services/schedulerService.js';
 
 initializeDatabase();
 startSchedulerService();
 startReplyHunterWorker();
+startReplyPublisher();
 
 const app = express();
 
@@ -82,7 +84,3 @@ app.listen(env.PORT, () => {
     } mode.`,
   );
 });
-
-
-
-

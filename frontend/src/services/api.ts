@@ -11,8 +11,8 @@ import type {
   PostMutationResponse,
   PostsResponse,
   ReplyDraftMutationResponse,
-  ReplyDraftsResponse,
   ReplyDraftStatus,
+  ReplyDraftsResponse,
   SaveDraftPayload,
   SchedulePostPayload,
   TopPostsResponse,
@@ -109,6 +109,8 @@ export const api = {
         reply_text: string;
         created_at: string;
         status: ReplyDraftStatus;
+        reply_post_id: string | null;
+        posted_at: string | null;
       }>;
     }>('/growth/replies').then((response) => ({
       generatedAt: response.generated_at,
@@ -119,12 +121,14 @@ export const api = {
         replyText: item.reply_text,
         createdAt: item.created_at,
         status: item.status,
+        replyPostId: item.reply_post_id,
+        postedAt: item.posted_at,
       })),
     }));
   },
   updateReplyDraftStatus(
     id: number,
-    status: Exclude<ReplyDraftStatus, 'draft'>,
+    status: Exclude<ReplyDraftStatus, 'draft' | 'posted'>,
   ): Promise<ReplyDraftMutationResponse> {
     return request<{
       draft: {
@@ -134,6 +138,8 @@ export const api = {
         reply_text: string;
         created_at: string;
         status: ReplyDraftStatus;
+        reply_post_id: string | null;
+        posted_at: string | null;
       };
     }>(`/growth/replies/${id}`, {
       method: 'PATCH',
@@ -146,6 +152,8 @@ export const api = {
         replyText: response.draft.reply_text,
         createdAt: response.draft.created_at,
         status: response.draft.status,
+        replyPostId: response.draft.reply_post_id,
+        postedAt: response.draft.posted_at,
       },
     }));
   },

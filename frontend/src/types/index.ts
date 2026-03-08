@@ -1,6 +1,6 @@
 export type QueuePostType = 'tweet' | 'thread';
 export type QueuePostStatus = 'draft' | 'scheduled' | 'posted';
-export type ReplyDraftStatus = 'draft' | 'approved' | 'rejected';
+export type ReplyDraftStatus = 'draft' | 'approved' | 'rejected' | 'posted';
 
 export interface GrowthPoint {
   label: string;
@@ -136,6 +136,8 @@ export interface ReplyDraft {
   replyText: string;
   createdAt: string;
   status: ReplyDraftStatus;
+  replyPostId: string | null;
+  postedAt: string | null;
 }
 
 export interface ReplyDraftsResponse {
