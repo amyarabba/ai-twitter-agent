@@ -4,14 +4,18 @@ import { ZodError } from 'zod';
 
 import { env } from './config/env.js';
 import { aiRouter } from './routes/aiRoutes.js';
+import { analyticsRouter } from './routes/analyticsRoutes.js';
+import { growthRouter } from './routes/growthRoutes.js';
 import { getDatabasePath, initializeDatabase } from './db/database.js';
 import { dashboardRouter } from './routes/dashboardRoutes.js';
 import { generatorRouter } from './routes/generatorRoutes.js';
 import { postsRouter } from './routes/postsRoutes.js';
+import { startReplyHunterWorker } from './services/growthWorkerService.js';
 import { startSchedulerService } from './services/schedulerService.js';
 
 initializeDatabase();
 startSchedulerService();
+startReplyHunterWorker();
 
 const app = express();
 
@@ -33,6 +37,9 @@ app.get('/api/health', (_request, response) => {
   });
 });
 
+app.use('/api', aiRouter);
+app.use('/api', analyticsRouter);
+app.use('/api', growthRouter);
 app.use('/api', dashboardRouter);
 app.use('/api', generatorRouter);
 app.use('/api', postsRouter);
@@ -75,4 +82,7 @@ app.listen(env.PORT, () => {
     } mode.`,
   );
 });
+
+
+
 

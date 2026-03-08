@@ -7,7 +7,12 @@ import { env } from '../config/env.js';
 let database: DatabaseSync | null = null;
 let resolvedDatabasePath = '';
 
-function ensureColumn(db: DatabaseSync, tableName: string, columnName: string, definition: string): void {
+function ensureColumn(
+  db: DatabaseSync,
+  tableName: string,
+  columnName: string,
+  definition: string,
+): void {
   const columns = db
     .prepare(`PRAGMA table_info(${tableName})`)
     .all() as Array<{ name: string }>;
@@ -37,16 +42,30 @@ function createSchema(db: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS engagement_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       post_id INTEGER NOT NULL,
-      impressions INTEGER NOT NULL,
-      likes INTEGER NOT NULL,
-      replies INTEGER NOT NULL,
-      retweets INTEGER NOT NULL,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      likes INTEGER NOT NULL DEFAULT 0,
+      replies INTEGER NOT NULL DEFAULT 0,
+      retweets INTEGER NOT NULL DEFAULT 0,
+      reposts INTEGER NOT NULL DEFAULT 0,
+      engagement_rate REAL NOT NULL DEFAULT 0,
       timestamp TEXT NOT NULL,
       FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS reply_drafts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tweet_id TEXT NOT NULL UNIQUE,
+      tweet_text TEXT NOT NULL,
+      reply_text TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('draft', 'approved', 'rejected'))
     );
   `);
 
   ensureColumn(db, 'posts', 'x_post_id', 'TEXT');
+  ensureColumn(db, 'engagement_logs', 'retweets', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(db, 'engagement_logs', 'reposts', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(db, 'engagement_logs', 'engagement_rate', 'REAL NOT NULL DEFAULT 0');
 }
 
 export function initializeDatabase(): DatabaseSync {

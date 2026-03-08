@@ -130,7 +130,7 @@ function QueuePostCard({
       <div className="mt-4">{renderContent(post.content)}</div>
 
       {post.status === 'posted' && post.engagement ? (
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
           <div className="rounded-2xl border border-white/8 bg-white/3 p-3">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Impressions</p>
             <p className="mt-2 text-lg font-semibold text-white">
@@ -150,9 +150,15 @@ function QueuePostCard({
             </p>
           </div>
           <div className="rounded-2xl border border-white/8 bg-white/3 p-3">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Retweets</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Reposts</p>
             <p className="mt-2 text-lg font-semibold text-white">
-              {post.engagement.retweets.toLocaleString()}
+              {post.engagement.reposts.toLocaleString()}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/3 p-3">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Engagement rate</p>
+            <p className="mt-2 text-lg font-semibold text-white">
+              {post.engagement.engagementRate}%
             </p>
           </div>
         </div>

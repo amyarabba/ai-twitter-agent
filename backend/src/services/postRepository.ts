@@ -22,8 +22,17 @@ interface PostRow {
   engagement_impressions: number | null;
   engagement_likes: number | null;
   engagement_replies: number | null;
-  engagement_retweets: number | null;
+  engagement_reposts: number | null;
+  engagement_rate: number | null;
   engagement_timestamp: string | null;
+}
+
+interface SimulatedEngagementMetrics {
+  impressions: number;
+  likes: number;
+  replies: number;
+  reposts: number;
+  engagementRate: number;
 }
 
 function serializeContent(content: PostContent): string {
@@ -55,6 +64,93 @@ function countTweetsFromContent(content: PostContent): number {
   return Array.isArray(content) ? content.length : 1;
 }
 
+function flattenContent(content: PostContent): string {
+  return Array.isArray(content) ? content.join(' ') : content;
+}
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+export function simulateEngagementMetrics(post: QueuePost): SimulatedEngagementMetrics {
+  const flatContent = flattenContent(post.content);
+  const tweetCount = countTweetsFromContent(post.content);
+  const contentWeight = Math.min(flatContent.length, 1400);
+  const seed = hashString(
+    `${post.id}:${post.type}:${flatContent}:${post.createdAt}:${post.xPostId ?? 'local'}`,
+  );
+  const threadMultiplier = post.type === 'thread' ? 1.28 : 1;
+  const baseImpressions =
+    1800 + (seed % 3200) + contentWeight * 3 + tweetCount * 420;
+  const impressions = Math.round(baseImpressions * threadMultiplier);
+  const likes = Math.max(
+    36,
+    Math.round(impressions * (0.044 + ((seed >>> 3) % 18) / 1000)),
+  );
+  const replies = Math.max(
+    8,
+    Math.round(impressions * (0.005 + ((seed >>> 7) % 11) / 2000)),
+  );
+  const reposts = Math.max(
+    10,
+    Math.round(impressions * (0.006 + ((seed >>> 11) % 13) / 2000)),
+  );
+  const totalEngagement = likes + replies + reposts;
+  const engagementRate = Number(((totalEngagement / impressions) * 100).toFixed(2));
+
+  return {
+    impressions,
+    likes,
+    replies,
+    reposts,
+    engagementRate,
+  };
+}
+
+function hasMeaningfulEngagement(engagement: EngagementLog | null): boolean {
+  if (!engagement) {
+    return false;
+  }
+
+  return (
+    engagement.impressions > 0 ||
+    engagement.likes > 0 ||
+    engagement.replies > 0 ||
+    engagement.reposts > 0 ||
+    engagement.engagementRate > 0
+  );
+}
+
+export function resolvePostEngagement(post: QueuePost): EngagementLog | null {
+  if (hasMeaningfulEngagement(post.engagement)) {
+    return post.engagement;
+  }
+
+  if (post.status !== 'posted') {
+    return post.engagement;
+  }
+
+  const metrics = simulateEngagementMetrics(post);
+
+  return {
+    id: post.engagement?.id ?? 0,
+    postId: post.id,
+    impressions: metrics.impressions,
+    likes: metrics.likes,
+    replies: metrics.replies,
+    reposts: metrics.reposts,
+    engagementRate: metrics.engagementRate,
+    timestamp: post.engagement?.timestamp ?? post.createdAt,
+  };
+}
+
 function mapEngagement(row: PostRow): EngagementLog | null {
   if (!row.engagement_id || !row.engagement_timestamp) {
     return null;
@@ -66,7 +162,8 @@ function mapEngagement(row: PostRow): EngagementLog | null {
     impressions: row.engagement_impressions ?? 0,
     likes: row.engagement_likes ?? 0,
     replies: row.engagement_replies ?? 0,
-    retweets: row.engagement_retweets ?? 0,
+    reposts: row.engagement_reposts ?? 0,
+    engagementRate: Number((row.engagement_rate ?? 0).toFixed(2)),
     timestamp: row.engagement_timestamp,
   };
 }
@@ -119,11 +216,26 @@ function baseSelect(): string {
         LIMIT 1
       ) AS engagement_replies,
       (
-        SELECT el.retweets FROM engagement_logs el
+        SELECT COALESCE(el.reposts, el.retweets, 0) FROM engagement_logs el
         WHERE el.post_id = p.id
         ORDER BY el.timestamp DESC
         LIMIT 1
-      ) AS engagement_retweets,
+      ) AS engagement_reposts,
+      (
+        SELECT COALESCE(
+          el.engagement_rate,
+          CASE
+            WHEN el.impressions > 0 THEN ROUND(
+              ((el.likes + el.replies + COALESCE(el.reposts, el.retweets, 0)) * 100.0) / el.impressions,
+              2
+            )
+            ELSE 0
+          END
+        ) FROM engagement_logs el
+        WHERE el.post_id = p.id
+        ORDER BY el.timestamp DESC
+        LIMIT 1
+      ) AS engagement_rate,
       (
         SELECT el.timestamp FROM engagement_logs el
         WHERE el.post_id = p.id
@@ -282,13 +394,32 @@ export function markPostAsPosted(postId: number, xPostId: string): QueuePost {
   return getPostById(postId) as QueuePost;
 }
 
-export function createEngagementLog(postId: number, timestamp: string): void {
+export function createEngagementLog(post: QueuePost, timestamp: string): void {
   const db = getDatabase();
+  const metrics = simulateEngagementMetrics(post);
 
   db.prepare(
-    `INSERT INTO engagement_logs (post_id, impressions, likes, replies, retweets, timestamp)
-     VALUES (?, 0, 0, 0, 0, ?)`,
-  ).run(postId, timestamp);
+    `INSERT INTO engagement_logs (
+       post_id,
+       impressions,
+       likes,
+       replies,
+       retweets,
+       reposts,
+       engagement_rate,
+       timestamp
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    post.id,
+    metrics.impressions,
+    metrics.likes,
+    metrics.replies,
+    metrics.reposts,
+    metrics.reposts,
+    metrics.engagementRate,
+    timestamp,
+  );
 }
 
 export function countTweetsForPost(post: QueuePost): number {

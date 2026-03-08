@@ -1,5 +1,6 @@
 export type QueuePostType = 'tweet' | 'thread';
 export type QueuePostStatus = 'draft' | 'scheduled' | 'posted';
+export type ReplyDraftStatus = 'draft' | 'approved' | 'rejected';
 
 export interface GrowthPoint {
   label: string;
@@ -104,6 +105,44 @@ export interface CompetitorRadarResponse {
   items: CompetitorRadarItem[];
 }
 
+export interface GrowthTarget {
+  tweetId: string;
+  author: string;
+  text: string;
+  likes: number;
+  reposts: number;
+  replies: number;
+  createdAt: string;
+}
+
+export interface GrowthTargetsResponse {
+  generatedAt: string;
+  items: GrowthTarget[];
+}
+
+export interface GrowthReplyPayload {
+  tweetText: string;
+  author: string;
+}
+
+export interface GrowthReplyResponse {
+  replyText: string;
+}
+
+export interface ReplyDraft {
+  id: number;
+  tweetId: string;
+  tweetText: string;
+  replyText: string;
+  createdAt: string;
+  status: ReplyDraftStatus;
+}
+
+export interface ReplyDraftsResponse {
+  generatedAt: string;
+  items: ReplyDraft[];
+}
+
 export type QueueContent = string | string[];
 
 export interface QueueEngagementLog {
@@ -112,7 +151,8 @@ export interface QueueEngagementLog {
   impressions: number;
   likes: number;
   replies: number;
-  retweets: number;
+  reposts: number;
+  engagementRate: number;
   timestamp: string;
 }
 
@@ -145,4 +185,32 @@ export interface SchedulePostPayload {
 
 export interface PostMutationResponse {
   post: QueuePost;
+}
+
+export interface ReplyDraftMutationResponse {
+  draft: ReplyDraft;
+}
+
+export interface AnalyticsPost {
+  id: number;
+  content: QueueContent;
+  type: QueuePostType;
+  xPostId: string | null;
+  createdAt: string;
+  impressions: number;
+  likes: number;
+  replies: number;
+  reposts: number;
+  engagementRate: number;
+  totalEngagement: number;
+}
+
+export interface AnalyticsPostsResponse {
+  generatedAt: string;
+  items: AnalyticsPost[];
+}
+
+export interface TopPostsResponse {
+  generatedAt: string;
+  items: AnalyticsPost[];
 }

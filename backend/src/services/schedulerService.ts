@@ -112,7 +112,14 @@ export async function runSchedulerCycle(): Promise<number> {
         const postedAt = new Date().toISOString();
 
         markPostAsPosted(post.id, xPostId);
-        createEngagementLog(post.id, postedAt);
+        createEngagementLog(
+          {
+            ...post,
+            status: 'posted',
+            xPostId,
+          },
+          postedAt,
+        );
 
         for (let index = 0; index < tweetCount; index += 1) {
           postingTimeline.push(new Date(postedAt).getTime());

@@ -1,5 +1,6 @@
 export type PostType = 'tweet' | 'thread';
 export type PostStatus = 'draft' | 'scheduled' | 'posted';
+export type ReplyDraftStatus = 'draft' | 'approved' | 'rejected';
 
 export interface GrowthPoint {
   label: string;
@@ -99,6 +100,55 @@ export interface CompetitorRadarResponse {
   items: CompetitorRadarItem[];
 }
 
+export interface GrowthTarget {
+  tweetId: string;
+  author: string;
+  text: string;
+  likes: number;
+  reposts: number;
+  replies: number;
+  createdAt: string;
+}
+
+export interface GrowthTargetsResponse {
+  generatedAt: string;
+  items: GrowthTarget[];
+}
+
+export interface GrowthReplyInput {
+  tweetText: string;
+  author: string;
+}
+
+export interface GrowthReplyResponse {
+  replyText: string;
+}
+
+export interface ReplyDraft {
+  id: number;
+  tweetId: string;
+  tweetText: string;
+  replyText: string;
+  createdAt: string;
+  status: ReplyDraftStatus;
+}
+
+export interface ReplyDraftsResponse {
+  generatedAt: string;
+  items: ReplyDraft[];
+}
+
+export interface SaveReplyDraftInput {
+  tweetId: string;
+  tweetText: string;
+  replyText: string;
+}
+
+export interface UpdateReplyDraftStatusInput {
+  id: number;
+  status: Exclude<ReplyDraftStatus, 'draft'>;
+}
+
 export type PostContent = string | string[];
 
 export interface EngagementLog {
@@ -107,7 +157,8 @@ export interface EngagementLog {
   impressions: number;
   likes: number;
   replies: number;
-  retweets: number;
+  reposts: number;
+  engagementRate: number;
   timestamp: string;
 }
 
@@ -142,4 +193,28 @@ export interface PublishPostResult {
 export interface PostingEvent {
   timestamp: string;
   tweetCount: number;
+}
+
+export interface AnalyticsPost {
+  id: number;
+  content: PostContent;
+  type: PostType;
+  xPostId: string | null;
+  createdAt: string;
+  impressions: number;
+  likes: number;
+  replies: number;
+  reposts: number;
+  engagementRate: number;
+  totalEngagement: number;
+}
+
+export interface AnalyticsPostsResponse {
+  generatedAt: string;
+  items: AnalyticsPost[];
+}
+
+export interface TopPostsResponse {
+  generatedAt: string;
+  items: AnalyticsPost[];
 }
