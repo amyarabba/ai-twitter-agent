@@ -139,16 +139,26 @@ export function resolvePostEngagement(post: QueuePost): EngagementLog | null {
 
   const metrics = simulateEngagementMetrics(post);
 
-  return {
-    id: post.engagement?.id ?? 0,
-    postId: post.id,
-    impressions: metrics.impressions,
-    likes: metrics.likes,
-    replies: metrics.replies,
-    reposts: metrics.reposts,
-    engagementRate: metrics.engagementRate,
-    timestamp: post.engagement?.timestamp ?? post.createdAt,
-  };
+  const engagement =
+  metrics.likes +
+  metrics.replies +
+  metrics.reposts;
+
+const engagementRate =
+  metrics.impressions > 0
+    ? engagement / metrics.impressions
+    : 0;
+
+return {
+  id: post.engagement?.id ?? 0,
+  postId: post.id,
+  impressions: metrics.impressions,
+  likes: metrics.likes,
+  replies: metrics.replies,
+  reposts: metrics.reposts,
+  engagementRate,
+  timestamp: post.engagement?.timestamp ?? post.createdAt,
+};
 }
 
 function mapEngagement(row: PostRow): EngagementLog | null {
@@ -424,4 +434,31 @@ export function createEngagementLog(post: QueuePost, timestamp: string): void {
 
 export function countTweetsForPost(post: QueuePost): number {
   return countTweetsFromContent(post.content);
+}
+
+export function enqueuePost(post: QueuePost): QueuePost {
+  const posts = getAllPosts();
+
+  const newPost = {
+    ...post,
+    id: posts.length + 1,
+    status: 'scheduled',
+    createdAt: new Date().toISOString(),
+  };
+
+  posts.push(newPost);
+
+  return newPost;
+}
+
+export async function queuePost(post: {
+text: string;
+type: 'tweet' | 'reply';
+}) {
+console.log('Queued post:', post.text);
+
+// temporary queue until publishing system runs
+return {
+success: true,
+};
 }

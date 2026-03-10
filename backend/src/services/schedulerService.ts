@@ -11,10 +11,16 @@ import type { QueuePost } from '../types/content.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MAX_TWEETS_PER_HOUR = 6;
+const MAX_TWEETS_PER_DAY = 5;
 const RETRY_DELAY_MS = 5 * 60 * 1000;
 
 let schedulerHandle: NodeJS.Timeout | null = null;
 let isRunning = false;
+
+function randomDelay(minMinutes: number, maxMinutes: number) {
+  const delay = Math.floor(Math.random() * (maxMinutes - minMinutes + 1) + minMinutes);
+  return delay * 60 * 1000;
+}
 
 function expandPostingEvents(events: Array<{ timestamp: string; tweetCount: number }>): number[] {
   return events
@@ -108,7 +114,9 @@ export async function runSchedulerCycle(): Promise<number> {
       }
 
       try {
-        const xPostId = await publishPost(post);
+        await new Promise(resolve => setTimeout(resolve, randomDelay(3, 15)));
+
+const xPostId = await publishPost(post);
         const postedAt = new Date().toISOString();
 
         markPostAsPosted(post.id, xPostId);

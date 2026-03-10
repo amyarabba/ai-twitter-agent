@@ -133,7 +133,7 @@ export async function postThread(tweets: string[]): Promise<PublishPostResult> {
     throw new Error('Cannot post an empty thread.');
   }
 
-  if (tweets.length > 6) {
+  if (tweets.length > 10) {
     throw new Error('Threads are limited to 6 posts in this system.');
   }
 

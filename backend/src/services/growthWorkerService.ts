@@ -7,6 +7,8 @@ import {
   getGrowthTargets,
 } from './replyHunterService.js';
 
+import { postReply } from './xService.js';
+
 const REPLY_HUNTER_INTERVAL_MS = 20 * 60 * 1000;
 const MAX_DRAFTS_PER_CYCLE = 3;
 
@@ -34,21 +36,29 @@ export async function runReplyHunterCycle(): Promise<number> {
       }
 
       const reply = await generateGrowthReply({
-        tweetText: target.text,
-        author: target.author,
-      });
+  tweetText: target.text,
+  author: target.author,
+});
 
-      saveReplyDraft({
-        tweetId: target.tweetId,
-        tweetText: target.text,
-        replyText: reply.replyText,
-      });
+saveReplyDraft({
+  tweetId: target.tweetId,
+  tweetText: target.text,
+  replyText: reply.replyText,
+});
+
+/* random human delay */
+await new Promise(resolve =>
+  setTimeout(resolve, Math.random() * 900000 + 300000)
+);
+
+/* post reply automatically */
+await postReply(reply.replyText, target.tweetId);
 
       createdCount += 1;
     }
 
     if (createdCount > 0) {
-      console.log(`Reply Hunter created ${createdCount} reply draft(s).`);
+      console.log(`Reply Hunter generated and posted ${createdCount} replies.`);
     }
 
     return createdCount;

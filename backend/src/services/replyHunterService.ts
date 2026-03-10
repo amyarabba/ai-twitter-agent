@@ -3,12 +3,15 @@ import { z } from 'zod';
 
 import { env } from '../config/env.js';
 import { getTrendSignals } from './mockDataService.js';
+
 import type {
   GrowthReplyInput,
   GrowthReplyResponse,
   GrowthTarget,
   GrowthTargetsResponse,
 } from '../types/content.js';
+
+const SEARCH_URL = 'https://api.x.com/2/tweets/search/recent';
 
 const client = env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: env.OPENAI_API_KEY })
@@ -119,25 +122,71 @@ function buildReplyPrompt(input: GrowthReplyInput): string {
     'Return JSON only with this exact shape:',
     '{"reply_text":"string"}',
     'Rules:',
-    '- The reply must add a useful insight or question, not generic praise.',
-    '- Keep it concise and natural.',
-    '- Do not use hashtags.',
-    '- Do not sound salesy or promotional.',
-    '- Stay under 220 characters.',
-    `Author: ${input.author}`,
-    `Original tweet: ${input.tweetText}`,
-  ].join('\n');
+'- The reply must add a useful insight or question, not generic praise.',
+'- Avoid generic replies like "Great insight".',
+'- Write like a thoughtful AI engineer commenting on the topic.',
+'- Occasionally ask a thoughtful question.',
+'- Keep it concise and natural.',
+'- Do not use hashtags.',
+'- Do not sound salesy or promotional.',
+'- Stay under 220 characters.',
+`Author: ${input.author}`,
+`Original tweet: ${input.tweetText}`,
+].join('\n');
 }
 
 export async function getGrowthTargets(): Promise<GrowthTargetsResponse> {
-  // Live target discovery can plug into X search later. For now, we simulate
-  // viral AI tweets from the same topic signals the rest of the app already uses.
+
+const query = encodeURIComponent(
+    'AI OR "AI agents" OR OpenAI OR Anthropic OR robotics lang:en -is:retweet'
+);
+
+const url =
+  `${SEARCH_URL}?query=${query}&max_results=20&tweet.fields=public_metrics,created_at`;
+
+const response = await fetch(url, {
+  headers: {
+    Authorization: `Bearer ${env.X_OAUTH2_ACCESS_TOKEN}`,
+  },
+});
+
+if (!response.ok) {
+  console.log('X API unavailable, using fallback AI signals.');
   return {
     generatedAt: new Date().toISOString(),
     items: buildFallbackTargets()
       .sort((left, right) => right.likes - left.likes)
       .slice(0, 8),
   };
+}
+
+const data = await response.json();
+
+const items = (data.data || []).map((tweet: any) => ({
+  tweetId: tweet.id,
+  author: '@unknown',
+  text: tweet.text,
+  likes: tweet.public_metrics?.like_count || 0,
+  reposts: tweet.public_metrics?.retweet_count || 0,
+  replies: tweet.public_metrics?.reply_count || 0,
+  createdAt: tweet.created_at,
+}));
+
+return {
+  generatedAt: new Date().toISOString(),
+  items: items
+    .filter(
+      (t: any) =>
+        t.likes + t.reposts + t.replies > 50
+    )
+    .sort(
+      (a: any, b: any) =>
+        b.likes + b.reposts + b.replies -
+        (a.likes + a.reposts + a.replies)
+    )
+    .slice(0, 8),
+};
+
 }
 
 export async function generateGrowthReply(
