@@ -20,7 +20,7 @@ export interface TrendSignal {
 async function fetchGithubTrends(): Promise<TrendSignal[]> {
   try {
     const res = await fetch(GITHUB_API);
-    const data = await res.json();
+    const data = (await res.json()) as any;
 
     return (data.items || []).map((repo: any) => ({
       title: repo.name,
