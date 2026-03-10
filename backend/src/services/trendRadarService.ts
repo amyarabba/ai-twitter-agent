@@ -40,14 +40,15 @@ async function fetchHackerNewsTrends(): Promise<TrendSignal[]> {
 
     const top = ids.slice(0, 10);
 
-    const stories = await Promise.all(
-      top.map(async (id: number) => {
-        const r = await fetch(
-          `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
-        );
-        return r.json();
-      }),
+    const stories: any[] = await Promise.all(
+  top.map(async (id: number) => {
+    const r = await fetch(
+      `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
     );
+    const data: any = await r.json();
+    return data;
+  }),
+);
 
     return stories
       .filter((s: any) => s?.title?.toLowerCase().includes('ai'))
