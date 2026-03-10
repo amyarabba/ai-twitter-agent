@@ -36,7 +36,7 @@ async function fetchGithubTrends(): Promise<TrendSignal[]> {
 async function fetchHackerNewsTrends(): Promise<TrendSignal[]> {
   try {
     const res = await fetch(HN_TOP_API);
-    const ids = await res.json();
+   const ids = (await res.json()) as number[];
 
     const top = ids.slice(0, 10);
 
