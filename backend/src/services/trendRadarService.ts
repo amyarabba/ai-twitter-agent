@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI import OpenAI from 'openai';
 import { env } from '../config/env.js';
 
 const client = new OpenAI({
@@ -20,7 +20,7 @@ export interface TrendSignal {
 async function fetchGithubTrends(): Promise<TrendSignal[]> {
   try {
     const res = await fetch(GITHUB_API);
-    const data = (await res.json()) as any;
+    const data: any = await res.json();
 
     return (data.items || []).map((repo: any) => ({
       title: repo.name,
@@ -36,22 +36,23 @@ async function fetchGithubTrends(): Promise<TrendSignal[]> {
 async function fetchHackerNewsTrends(): Promise<TrendSignal[]> {
   try {
     const res = await fetch(HN_TOP_API);
-   const ids = (await res.json()) as number[];
+    const ids: number[] = await res.json();
 
     const top = ids.slice(0, 10);
 
     const stories: any[] = await Promise.all(
-  top.map(async (id: number) => {
-    const r = await fetch(
-      `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
+      top.map(async (id: number) => {
+        const r = await fetch(
+          `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
+        );
+
+        const story: any = await r.json();
+        return story;
+      }),
     );
-    const data: any = await r.json();
-    return data;
-  }),
-);
 
     return stories
-      .filter((s: any) => s?.title?.toLowerCase().includes('ai'))
+      .filter((s: any) => s?.title?.toLowerCase()?.includes('ai'))
       .map((s: any) => ({
         title: s.title,
         description: 'Trending discussion on Hacker News',
@@ -72,15 +73,16 @@ export async function detectTrendSignals(): Promise<TrendSignal[]> {
   const twitterSignals: TrendSignal[] = twitterText
     ? [
         {
-          title: "AI discussion trending on Twitter",
+          title: 'AI discussion trending on Twitter',
           description: twitterText,
-          url: "https://twitter.com/search?q=AI",
+          url: 'https://twitter.com/search?q=AI',
         },
       ]
     : [];
 
   return [...github, ...hn, ...twitterSignals].slice(0, 6);
 }
+
 export async function generateTrendTweet(
   signal: TrendSignal,
 ): Promise<string | null> {
@@ -99,7 +101,7 @@ Rules:
 - No marketing tone
 `;
 
-    const response = await client.responses.create({
+    const response: any = await client.responses.create({
       model: env.OPENAI_MODEL,
       input: prompt,
     });
@@ -111,17 +113,16 @@ Rules:
   }
 }
 
-async function fetchAITwitterSignals() {
+async function fetchAITwitterSignals(): Promise<string> {
   try {
-    const rss =
-      "https://rsshub.app/twitter/search/AI";
+    const rss = 'https://rsshub.app/twitter/search/AI';
 
     const res = await fetch(rss);
     const text = await res.text();
 
     return text.slice(0, 1000);
-  } catch (err) {
-    console.log("Twitter RSS unavailable");
-    return "";
+  } catch {
+    console.log('Twitter RSS unavailable');
+    return '';
   }
 }
